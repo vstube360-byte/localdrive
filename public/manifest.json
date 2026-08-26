@@ -1,0 +1,23 @@
+{
+  "name": "LocalCloud File Explorer",
+  "short_name": "LocalCloud",
+  "description": "Offline-first cloud drive powered by IndexedDB with zip/unzip, search, sorting, and rich image & video previews.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='36' fill='%23171717'/><path d='M60 120 C48 120 40 110 40 96 C40 84 48 74 58 72 C64 54 80 44 100 44 C120 44 136 56 142 74 C152 76 160 84 160 96 C160 108 150 120 138 120 Z' fill='%23ffffff'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23171717'/><path d='M160 320 C128 320 106 294 106 256 C106 224 128 198 154 192 C170 144 214 118 266 118 C320 118 362 150 378 198 C406 202 426 224 426 256 C426 288 400 320 368 320 Z' fill='%23ffffff'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

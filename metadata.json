@@ -1,0 +1,6 @@
+{
+  "name": "LocalCloud File Explorer",
+  "description": "Offline-first cloud drive powered by IndexedDB with full PWA offline caching, integrated code and text editor, zip/unzip, search, sorting, and image/video previews.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
