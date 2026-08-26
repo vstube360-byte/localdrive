@@ -29,11 +29,11 @@ export const ProgressModal: React.FC<ProgressModalProps> = ({
   return (
     <div 
       id="progress-modal-overlay"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200 select-none"
     >
       <div 
         id="progress-modal-container"
-        className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl p-5 flex flex-col items-center text-center"
+        className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl p-5 flex flex-col items-center text-center animate-pop-in ring-1 ring-white/10"
       >
         {/* Animated Icon Badge */}
         <div className="w-14 h-14 rounded-2xl bg-neutral-950 border border-neutral-800 flex items-center justify-center mb-3 shadow-inner">
@@ -57,9 +57,9 @@ export const ProgressModal: React.FC<ProgressModalProps> = ({
         </p>
 
         {/* Progress Bar */}
-        <div className="w-full bg-neutral-950 border border-neutral-800 h-2.5 rounded-full overflow-hidden mb-2">
+        <div className="w-full bg-neutral-950 border border-neutral-800 h-2.5 rounded-full overflow-hidden mb-2 p-0.5">
           <div 
-            className="h-full bg-white transition-all duration-150 rounded-full"
+            className="h-full bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400 transition-all duration-300 rounded-full shadow-sm shadow-sky-500/20"
             style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
           />
         </div>

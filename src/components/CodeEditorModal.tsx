@@ -404,11 +404,11 @@ export const CodeEditorModal: React.FC<CodeEditorModalProps> = ({
   return (
     <div
       id="code-editor-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-3 md:p-6 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-0 sm:p-3 md:p-6 animate-in fade-in duration-200"
     >
       <div
         id="code-editor-container"
-        className={`bg-neutral-900 border border-neutral-800 shadow-2xl flex flex-col overflow-hidden transition-all duration-200 ${
+        className={`bg-neutral-900 border border-neutral-800 shadow-2xl flex flex-col overflow-hidden transition-all duration-200 animate-pop-in ${
           isFullscreen 
             ? 'w-full h-full rounded-none border-0' 
             : 'w-full max-w-6xl h-full sm:h-[92dvh] sm:max-h-[920px] rounded-none sm:rounded-2xl'

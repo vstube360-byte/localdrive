@@ -1611,11 +1611,11 @@ export default function App() {
           onDelete={(items) => handleDelete(items, isTrashView)}
         />
 
-        {/* Floating Toast Notification */}
+        {/* Floating Dynamic Island / Pill Toast Notification */}
         {toastMessage && (
           <div 
             id="app-toast-notification"
-            className="fixed bottom-6 right-6 z-50 px-4 py-3 bg-neutral-900 border border-neutral-700 text-white rounded-2xl shadow-2xl text-xs flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-3 duration-200 font-medium"
+            className="fixed bottom-6 right-6 z-50 px-4 py-3 bg-neutral-900/95 backdrop-blur-xl border border-neutral-700/80 text-white rounded-2xl shadow-2xl text-xs flex items-center gap-2.5 animate-toast-float ring-1 ring-white/10 font-medium"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>{toastMessage}</span>

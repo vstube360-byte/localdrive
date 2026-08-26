@@ -266,12 +266,12 @@ export const FileItemCard: React.FC<FileItemCardProps> = ({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchMove}
-        className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs select-none transition-all cursor-pointer border min-h-[52px] active:scale-[0.99] ${
+        className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs select-none transition-all duration-150 ease-out cursor-pointer border min-h-[52px] active:scale-[0.97] ${
           isDropTarget
-            ? 'ring-2 ring-emerald-400 bg-emerald-950/40 border-emerald-400'
+            ? 'ring-4 ring-emerald-400/60 bg-emerald-950/60 border-emerald-400 scale-[1.03] shadow-xl'
             : isSelected
-            ? 'bg-neutral-800 text-white border-neutral-500 shadow-sm'
-            : 'bg-neutral-900/50 hover:bg-neutral-900 text-neutral-200 border-neutral-800 active:bg-neutral-800'
+            ? 'bg-neutral-800/95 text-white border-sky-500/70 shadow-md ring-1 ring-sky-500/30'
+            : 'bg-neutral-900/50 hover:bg-neutral-900 text-neutral-200 border-neutral-800 active:bg-neutral-800/80'
         }`}
       >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -283,14 +283,14 @@ export const FileItemCard: React.FC<FileItemCardProps> = ({
               e.stopPropagation();
               onToggleSelect(item, e);
             }}
-            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center border transition-all shrink-0 active:scale-90 ${
+            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center border transition-all shrink-0 active:scale-85 ${
               isSelected 
-                ? 'bg-white border-white text-black shadow-sm' 
+                ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/20' 
                 : 'border-neutral-700 bg-neutral-950 hover:border-neutral-500'
             }`}
             title={isSelected ? 'Deselect item' : 'Select item'}
           >
-            {isSelected && <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />}
+            {isSelected && <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3] animate-checkmark-pop" />}
           </button>
 
           <div className="shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-center overflow-hidden">
@@ -420,11 +420,11 @@ export const FileItemCard: React.FC<FileItemCardProps> = ({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchMove}
-      className={`relative flex flex-col justify-between p-2.5 sm:p-3.5 rounded-2xl border transition-all select-none cursor-pointer overflow-hidden active:scale-[0.98] ${
+      className={`relative flex flex-col justify-between p-2.5 sm:p-3.5 rounded-2xl border transition-all duration-150 ease-out select-none cursor-pointer overflow-hidden active:scale-[0.97] group ${
         isDropTarget
-          ? 'ring-2 ring-emerald-400 bg-emerald-950/40 border-emerald-400'
+          ? 'ring-4 ring-emerald-400/60 bg-emerald-950/60 border-emerald-400 scale-[1.04] shadow-xl'
           : isSelected
-          ? 'bg-neutral-800 border-neutral-500 shadow-md ring-1 ring-neutral-500'
+          ? 'bg-neutral-800/95 border-sky-500/80 shadow-md ring-1 ring-sky-500/40'
           : 'bg-neutral-900/60 hover:bg-neutral-900 active:bg-neutral-850 border-neutral-800 hover:border-neutral-700 shadow-sm'
       }`}
     >
@@ -439,17 +439,17 @@ export const FileItemCard: React.FC<FileItemCardProps> = ({
               e.stopPropagation();
               onToggleSelect(item, e);
             }}
-            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center border transition-all shrink-0 active:scale-90 ${
+            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center border transition-all shrink-0 active:scale-85 ${
               isSelected 
-                ? 'bg-white border-white text-black shadow-sm' 
+                ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/20' 
                 : 'border-neutral-700 bg-neutral-950 hover:border-neutral-500'
             }`}
             title={isSelected ? 'Deselect item' : 'Select item'}
           >
-            {isSelected && <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />}
+            {isSelected && <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3] animate-checkmark-pop" />}
           </button>
 
-          <div className="p-1.5 sm:p-2 rounded-xl bg-neutral-950 border border-neutral-800 shrink-0">
+          <div className="p-1.5 sm:p-2 rounded-xl bg-neutral-950 border border-neutral-800 shrink-0 group-hover:scale-105 transition-transform duration-200">
             {renderIcon('w-4 h-4 sm:w-5 sm:h-5')}
           </div>
         </div>

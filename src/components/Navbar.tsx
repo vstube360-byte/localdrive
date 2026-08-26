@@ -263,14 +263,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* SELECTED FILE / ITEMS ACTION BAR */}
       {hasSelection ? (
-        <div className="flex-1 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="flex-1 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-1 animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Left: Selected Label & Details */}
           <div className="flex items-center gap-2 shrink-0 min-w-0 pr-2">
-            <span className="px-2.5 py-1 rounded-xl bg-sky-500 text-white font-mono text-xs font-bold shadow-md shadow-sky-500/20 shrink-0">
+            <span 
+              key={selectedItems.length}
+              className="px-2.5 py-1 rounded-xl bg-sky-500 text-white font-mono text-xs font-bold shadow-md shadow-sky-500/25 shrink-0 animate-badge-bounce"
+            >
               {selectedItems.length} selected
             </span>
             {singleItem && (
-              <div className="min-w-0 hidden sm:block">
+              <div className="min-w-0 hidden sm:block animate-in fade-in duration-150">
                 <span className="font-semibold text-xs text-neutral-100 truncate block max-w-[180px] lg:max-w-[260px]">
                   {singleItem.name}
                 </span>
@@ -287,7 +290,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {singleItem && onOpenInTab && (
               <button
                 onClick={() => onOpenInTab(singleItem)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-100 hover:text-white text-xs font-medium transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 border border-neutral-700 text-neutral-100 hover:text-white text-xs font-medium hover:scale-105 active:scale-95 transition-all duration-150 shadow-sm"
                 title="Open in Browser Tab"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
@@ -299,7 +302,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {singleItem && onPreview && (isImageOrVideo(singleItem) || isHtml(singleItem)) && (
               <button
                 onClick={() => onPreview(singleItem)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-100 hover:text-white text-xs font-medium transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 border border-neutral-700 text-neutral-100 hover:text-white text-xs font-medium hover:scale-105 active:scale-95 transition-all duration-150 shadow-sm"
                 title="Live Preview"
               >
                 <Eye className="w-3.5 h-3.5 text-emerald-400" />
@@ -311,7 +314,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {singleItem && onEdit && isTextOrCode(singleItem) && (
               <button
                 onClick={() => onEdit(singleItem)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-100 hover:text-white text-xs font-medium transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 border border-neutral-700 text-neutral-100 hover:text-white text-xs font-medium hover:scale-105 active:scale-95 transition-all duration-150 shadow-sm"
                 title="Edit in Code Editor"
               >
                 <Code2 className="w-3.5 h-3.5 text-amber-400" />
@@ -323,7 +326,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {singleItem && onRename && (
               <button
                 onClick={() => onRename(singleItem)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all duration-150"
                 title="Rename Item"
               >
                 <Edit3 className="w-3.5 h-3.5" />
@@ -335,7 +338,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onToggleFavorite && (
               <button
                 onClick={() => onToggleFavorite(selectedItems)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all duration-150"
                 title="Favorite"
               >
                 <Star className="w-3.5 h-3.5 text-amber-400" />
@@ -347,7 +350,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onDownload && (
               <button
                 onClick={() => onDownload(selectedItems)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all duration-150"
                 title="Download"
               >
                 <Download className="w-3.5 h-3.5 text-sky-400" />
@@ -359,7 +362,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {singleItem && isZip(singleItem) && onUnzip && (
               <button
                 onClick={() => onUnzip(singleItem)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all duration-150"
                 title="Extract ZIP Files"
               >
                 <Archive className="w-3.5 h-3.5 text-amber-400" />
@@ -371,7 +374,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onZip && (
               <button
                 onClick={() => onZip(selectedItems)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all duration-150"
                 title="Zip Selected"
               >
                 <Archive className="w-3.5 h-3.5 text-neutral-400" />
@@ -383,7 +386,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {singleItem && onGetInfo && (
               <button
                 onClick={() => onGetInfo(singleItem)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 border border-neutral-800 text-neutral-300 hover:text-white text-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all duration-150"
                 title="File Information & Properties"
               >
                 <Info className="w-3.5 h-3.5 text-neutral-400" />
@@ -395,7 +398,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onDelete && (
               <button
                 onClick={() => onDelete(selectedItems)}
-                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 active:bg-rose-950 border border-rose-800 text-rose-300 hover:text-white text-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all duration-150"
                 title="Delete Selected"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -409,7 +412,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onClearSelection && (
               <button
                 onClick={onClearSelection}
-                className="p-1.5 sm:p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors"
+                className="p-1.5 sm:p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-neutral-400 hover:text-white hover:scale-105 active:scale-95 transition-all duration-150"
                 title="Deselect All (Esc)"
               >
                 <X className="w-4 h-4" />
@@ -447,7 +450,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {isNewMenuOpen && (
-                <div className="absolute left-0 mt-2 w-64 bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl py-1.5 z-50 divide-y divide-neutral-800 text-xs animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute left-0 mt-2 w-64 bg-neutral-900/95 backdrop-blur-xl border border-neutral-700/80 rounded-2xl shadow-2xl py-1.5 z-50 divide-y divide-neutral-800 text-xs animate-pop-in ring-1 ring-white/10">
                   <div className="py-1">
                     <button
                       id="menu-item-new-file"
@@ -639,7 +642,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {isSortMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 mt-2 w-48 bg-neutral-900/95 backdrop-blur-xl border border-neutral-700/80 rounded-2xl shadow-2xl py-1.5 z-50 text-xs animate-pop-in ring-1 ring-white/10">
                   <div className="px-3.5 py-1.5 text-[11px] font-bold uppercase text-neutral-400">
                     Sort Files By
                   </div>

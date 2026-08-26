@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { 
   Eye, 
   ExternalLink, 
@@ -75,6 +75,37 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onNewFolder,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: y, left: x });
+
+  useLayoutEffect(() => {
+    if (isOpen && menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect();
+      const padding = 10;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let left = x;
+      let top = y;
+
+      // Adjust horizontal overflow
+      if (left + rect.width > viewportWidth - padding) {
+        left = viewportWidth - rect.width - padding;
+      }
+      if (left < padding) {
+        left = padding;
+      }
+
+      // Adjust vertical overflow (shift upwards so bottom is never cut off)
+      if (top + rect.height > viewportHeight - padding) {
+        top = Math.max(padding, viewportHeight - rect.height - padding);
+      }
+      if (top < padding) {
+        top = padding;
+      }
+
+      setMenuPos({ top, left });
+    }
+  }, [isOpen, x, y, targetItem, selectedItems]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
@@ -103,9 +134,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
   if (!isOpen) return null;
 
-  const adjustedX = Math.min(x, window.innerWidth - 240);
-  const adjustedY = Math.min(y, window.innerHeight - 420);
-
   const activeItems = selectedItems.length > 0 ? selectedItems : targetItem ? [targetItem] : [];
   const singleItem = activeItems.length === 1 ? activeItems[0] : null;
   const isMultiple = activeItems.length > 1;
@@ -115,8 +143,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       <div
         id="context-menu-blank"
         ref={menuRef}
-        className="fixed z-50 min-w-[220px] bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl py-1.5 text-xs text-neutral-200 divide-y divide-neutral-800 animate-in fade-in zoom-in-95 duration-100 select-none"
-        style={{ top: `${adjustedY}px`, left: `${adjustedX}px` }}
+        className="fixed z-50 min-w-[220px] max-h-[calc(100dvh-24px)] overflow-y-auto bg-neutral-900/95 backdrop-blur-xl border border-neutral-700/80 rounded-2xl shadow-2xl py-1.5 text-xs text-neutral-200 divide-y divide-neutral-800 animate-pop-in ring-1 ring-white/10 select-none"
+        style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }}
       >
         <div className="py-1">
           {onNewFolder && (
@@ -165,8 +193,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     <div
       id="context-menu-item"
       ref={menuRef}
-      className="fixed z-50 min-w-[220px] bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl py-1.5 text-xs text-neutral-200 divide-y divide-neutral-800 animate-in fade-in zoom-in-95 duration-100 select-none"
-      style={{ top: `${adjustedY}px`, left: `${adjustedX}px` }}
+      className="fixed z-50 min-w-[220px] max-h-[calc(100dvh-24px)] overflow-y-auto bg-neutral-900/95 backdrop-blur-xl border border-neutral-700/80 rounded-2xl shadow-2xl py-1.5 text-xs text-neutral-200 divide-y divide-neutral-800 animate-pop-in ring-1 ring-white/10 select-none"
+      style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }}
     >
       {isTrashView ? (
         <div className="py-1">

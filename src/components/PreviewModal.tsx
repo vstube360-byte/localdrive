@@ -161,12 +161,12 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
     <div 
       id="preview-modal-backdrop"
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-0 sm:p-3 md:p-6 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-3 md:p-6 animate-in fade-in duration-200"
     >
       <div 
         id="preview-modal-container"
         onClick={(e) => e.stopPropagation()}
-        className={`bg-neutral-950 border border-neutral-800 flex flex-col shadow-2xl overflow-hidden transition-all duration-200 ${
+        className={`bg-neutral-950 border border-neutral-800 flex flex-col shadow-2xl overflow-hidden transition-all duration-200 animate-pop-in ${
           isFullscreen 
             ? 'w-full h-full rounded-none border-0' 
             : 'w-full max-w-5xl h-full sm:h-[88dvh] rounded-none sm:rounded-3xl'

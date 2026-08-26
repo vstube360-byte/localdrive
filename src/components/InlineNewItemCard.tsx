@@ -4,6 +4,8 @@ import {
   FileCode, 
   FileSpreadsheet, 
   Folder,
+  FolderPlus,
+  FilePlus,
   Check, 
   X,
   Code2,
@@ -16,8 +18,6 @@ import {
   Video,
   Archive,
   KeyRound,
-  FileDigit,
-  Sparkles
 } from 'lucide-react';
 import { ViewMode } from '../types';
 
@@ -34,25 +34,13 @@ export const InlineNewItemCard: React.FC<InlineNewItemCardProps> = ({
   onCommit,
   onCancel,
 }) => {
-  const [inputValue, setInputValue] = useState<string>(
-    type === 'folder' ? 'New Folder' : 'untitled.js'
-  );
+  // Empty by default as requested
+  const [inputValue, setInputValue] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
-      // Select name portion excluding extension if file
-      if (type === 'file') {
-        const dotIndex = inputValue.lastIndexOf('.');
-        if (dotIndex > 0) {
-          inputRef.current.setSelectionRange(0, dotIndex);
-        } else {
-          inputRef.current.select();
-        }
-      } else {
-        inputRef.current.select();
-      }
     }
   }, []);
 
@@ -60,7 +48,7 @@ export const InlineNewItemCard: React.FC<InlineNewItemCardProps> = ({
   const detectedType = useMemo(() => {
     if (type === 'folder') {
       return {
-        label: 'Folder',
+        label: inputValue.trim() ? 'Folder' : 'New Folder',
         color: 'text-amber-400',
         bg: 'bg-amber-500/10 border-amber-500/30',
         icon: <Folder className="w-6 h-6 sm:w-8 sm:h-8 text-amber-400 fill-amber-500/20" />,
@@ -69,6 +57,16 @@ export const InlineNewItemCard: React.FC<InlineNewItemCardProps> = ({
     }
 
     const clean = inputValue.trim();
+    if (!clean) {
+      return {
+        label: 'New File',
+        color: 'text-sky-400',
+        bg: 'bg-sky-950/40 border-sky-800/60',
+        icon: <FilePlus className="w-6 h-6 sm:w-8 sm:h-8 text-sky-400" />,
+        miniIcon: <FilePlus className="w-4 h-4 text-sky-400" />,
+      };
+    }
+
     const dotIndex = clean.lastIndexOf('.');
     const ext = dotIndex !== -1 ? clean.substring(dotIndex).toLowerCase() : '';
 
@@ -96,7 +94,7 @@ export const InlineNewItemCard: React.FC<InlineNewItemCardProps> = ({
       case '.mjs':
       case '.cjs':
         return {
-          label: 'JavaScript Script',
+          label: 'JavaScript',
           color: 'text-amber-400',
           bg: 'bg-amber-950/40 border-amber-800/60',
           icon: <Code2 className="w-6 h-6 sm:w-8 sm:h-8 text-amber-400" />,
@@ -247,7 +245,7 @@ export const InlineNewItemCard: React.FC<InlineNewItemCardProps> = ({
   // GRID VIEW MODE
   if (viewMode === 'grid') {
     return (
-      <div className="relative group bg-neutral-900/90 border-2 border-sky-500/80 rounded-2xl p-3 sm:p-4 flex flex-col justify-between shadow-xl ring-2 ring-sky-500/20 animate-in zoom-in-95 duration-150">
+      <div className="relative group bg-neutral-900/95 border-2 border-sky-500 rounded-2xl p-3 sm:p-4 flex flex-col justify-between shadow-2xl ring-4 ring-sky-500/25 animate-slide-down-spring">
         {/* Top Icon & Live Badge */}
         <div className="flex items-start justify-between mb-2">
           <div className="p-2.5 sm:p-3 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-center">
@@ -289,7 +287,8 @@ export const InlineNewItemCard: React.FC<InlineNewItemCardProps> = ({
           <button
             type="button"
             onMouseDown={(e) => { e.preventDefault(); handleSubmit(); }}
-            className="flex items-center gap-1 px-3 py-1 rounded-lg bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold shadow-sm transition-all"
+            disabled={!inputValue.trim()}
+            className="flex items-center gap-1 px-3 py-1 rounded-lg bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition-all"
             title="Create (Enter)"
           >
             <Check className="w-3.5 h-3.5" />
@@ -302,7 +301,7 @@ export const InlineNewItemCard: React.FC<InlineNewItemCardProps> = ({
 
   // LIST / COMPACT VIEW MODE
   return (
-    <div className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-2.5 bg-neutral-900/90 border-2 border-sky-500/80 rounded-xl shadow-lg ring-2 ring-sky-500/20 animate-in fade-in duration-150 gap-2 mb-1.5">
+    <div className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-2.5 bg-neutral-900/95 border-2 border-sky-500/80 rounded-xl shadow-lg ring-2 ring-sky-500/20 animate-in fade-in duration-150 gap-2 mb-1.5">
       <div className="flex items-center gap-2.5 flex-1 min-w-0">
         <div className="p-1.5 rounded-lg bg-neutral-950 border border-neutral-800 shrink-0">
           {detectedType.miniIcon}
@@ -336,7 +335,8 @@ export const InlineNewItemCard: React.FC<InlineNewItemCardProps> = ({
         <button
           type="button"
           onMouseDown={(e) => { e.preventDefault(); handleSubmit(); }}
-          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold shadow-sm"
+          disabled={!inputValue.trim()}
+          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:hover:bg-sky-500 text-white text-xs font-semibold shadow-sm"
           title="Create (Enter)"
         >
           <Check className="w-3.5 h-3.5" />

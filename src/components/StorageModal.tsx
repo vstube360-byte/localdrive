@@ -70,17 +70,17 @@ export const StorageModal: React.FC<StorageModalProps> = ({
   return (
     <div 
       id="storage-modal-overlay"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
         id="storage-modal-container"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col text-xs"
+        className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col text-xs animate-pop-in"
       >
         <div className="flex items-center justify-between px-4 py-3 bg-neutral-950 border-b border-neutral-800">
           <div className="flex items-center gap-2">
-            <HardDrive className="w-4 h-4 text-white" />
+            <HardDrive className="w-4 h-4 text-sky-400" />
             <h3 className="text-xs font-semibold text-neutral-100">IndexedDB Storage</h3>
           </div>
           <button
@@ -97,9 +97,9 @@ export const StorageModal: React.FC<StorageModalProps> = ({
               <span className="text-sm font-semibold text-neutral-100">{formatBytes(stats.usage)}</span>
               <span className="text-neutral-400 font-mono">{stats.fileCount} Files</span>
             </div>
-            <div className="h-2 w-full bg-neutral-800 rounded-full overflow-hidden">
+            <div className="h-2.5 w-full bg-neutral-800/80 rounded-full overflow-hidden p-0.5">
               <div
-                className="h-full bg-white rounded-full transition-all duration-300"
+                className="h-full bg-gradient-to-r from-sky-400 to-teal-400 rounded-full transition-all duration-700 ease-out shadow-sm shadow-sky-500/20"
                 style={{ width: `${usagePercent}%` }}
               />
             </div>

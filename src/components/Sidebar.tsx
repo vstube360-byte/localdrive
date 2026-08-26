@@ -248,10 +248,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[11px] text-neutral-400 font-mono">{formatBytes(storageStats.usage)}</span>
             </div>
 
-            <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-neutral-800/80 h-2 rounded-full overflow-hidden p-0.5">
               <div 
-                className="h-full bg-white rounded-full"
-                style={{ width: `${usagePercent}%` }}
+                className="h-full bg-gradient-to-r from-sky-400 to-teal-400 rounded-full transition-all duration-700 ease-out shadow-sm shadow-sky-500/20"
+                style={{ width: `${Math.max(1, Math.min(100, usagePercent))}%` }}
               />
             </div>
           </div>
