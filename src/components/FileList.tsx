@@ -20,6 +20,7 @@ import {
 import { VFile, ViewMode, SortOption } from '../types';
 import { isFolder } from '../utils/fileUtils';
 import { FileItemCard } from './FileItemCard';
+import { InlineNewItemCard } from './InlineNewItemCard';
 
 interface FileListProps {
   files: VFile[];
@@ -30,6 +31,9 @@ interface FileListProps {
   isSelectMode: boolean;
   onToggleSelectMode: () => void;
   renamingItemId: string | null;
+  inlineCreatingType?: 'file' | 'folder' | null;
+  onInlineCreateCommit?: (name: string, type: 'file' | 'folder') => void;
+  onInlineCreateCancel?: () => void;
   isTrashView: boolean;
   currentFolderId?: string | null;
   folderBreadcrumbs?: VFile[];
@@ -67,6 +71,9 @@ export const FileList: React.FC<FileListProps> = ({
   isSelectMode,
   onToggleSelectMode,
   renamingItemId,
+  inlineCreatingType = null,
+  onInlineCreateCommit,
+  onInlineCreateCancel,
   isTrashView,
   currentFolderId = null,
   folderBreadcrumbs = [],
@@ -108,59 +115,55 @@ export const FileList: React.FC<FileListProps> = ({
 
     const readEntry = async (entry: any, path: string): Promise<void> => {
       if (entry.isFile) {
-        return new Promise((resolve) => {
-          entry.file((file: File) => {
-            results.push({ file, path: path ? `${path}/${file.name}` : file.name });
-            resolve();
-          }, () => resolve());
+        const file: File = await new Promise((resolve, reject) => {
+          entry.file(resolve, reject);
         });
+        results.push({ file, path: path ? `${path}/${file.name}` : file.name });
       } else if (entry.isDirectory) {
         const dirReader = entry.createReader();
-        return new Promise((resolve) => {
-          const readEntries = () => {
-            dirReader.readEntries(async (entries: any[]) => {
-              if (entries.length === 0) {
-                resolve();
-              } else {
-                for (const subEntry of entries) {
-                  await readEntry(subEntry, path ? `${path}/${entry.name}` : entry.name);
-                }
-                readEntries();
-              }
-            }, () => resolve());
-          };
-          readEntries();
+        const entries: any[] = await new Promise((resolve, reject) => {
+          dirReader.readEntries(resolve, reject);
         });
+        const newPath = path ? `${path}/${entry.name}` : entry.name;
+        for (const subEntry of entries) {
+          await readEntry(subEntry, newPath);
+        }
       }
     };
 
-    const entries: any[] = [];
+    const promises: Promise<void>[] = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      if (item.kind === 'file') {
-        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
-        if (entry) entries.push(entry);
+      if (item.webkitGetAsEntry) {
+        const entry = item.webkitGetAsEntry();
+        if (entry) {
+          promises.push(readEntry(entry, ''));
+        }
+      } else {
+        const file = item.getAsFile();
+        if (file) {
+          results.push({ file, path: file.name });
+        }
       }
     }
 
-    for (const entry of entries) {
-      await readEntry(entry, '');
-    }
+    await Promise.all(promises);
     return results;
   };
 
+  // Drag and drop handlers on full file area
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isDragOver) setIsDragOver(true);
+    if (!isTrashView) {
+      setIsDragOver(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.currentTarget === e.target) {
-      setIsDragOver(false);
-    }
+    setIsDragOver(false);
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -168,214 +171,224 @@ export const FileList: React.FC<FileListProps> = ({
     e.stopPropagation();
     setIsDragOver(false);
 
+    if (isTrashView) return;
+
+    if (e.dataTransfer.types.includes('application/x-localcloud-item')) {
+      return;
+    }
+
     try {
       const scanned = await scanFilesAndFolders(e.dataTransfer);
       if (scanned.length > 0 && onUploadFilesWithPaths) {
         onUploadFilesWithPaths(scanned);
-        return;
+      } else if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && onUploadFiles) {
+        onUploadFiles(e.dataTransfer.files);
       }
     } catch (err) {
-      console.warn('Folder drag and drop scan fallback:', err);
-    }
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && onUploadFiles) {
-      onUploadFiles(e.dataTransfer.files);
+      console.error('Failed to parse drag and drop entries:', err);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && onUploadFiles) {
+        onUploadFiles(e.dataTransfer.files);
+      }
     }
   };
 
   return (
     <div 
       id="file-list-container"
+      className={`flex-1 flex flex-col min-w-0 bg-neutral-950 overflow-hidden relative select-none ${
+        isDragOver ? 'ring-2 ring-sky-500 bg-sky-950/20' : ''
+      }`}
+      onContextMenu={onBlankContextMenu}
       onDragOver={handleDragOver}
-      onDragEnter={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex-1 flex flex-col min-h-0 h-full overflow-hidden relative select-none w-full max-w-full transition-colors ${
-        isDragOver ? 'bg-sky-950/20 ring-2 ring-sky-500/50 ring-inset' : ''
-      }`}
-      onContextMenu={(e) => {
-        if ((e.target as HTMLElement).id === 'file-list-container' || (e.target as HTMLElement).id === 'file-list-scrollable') {
-          e.preventDefault();
-          onBlankContextMenu(e);
-        }
-      }}
     >
-      {/* Drag & Drop Visual Overlay Banner */}
-      {isDragOver && (
-        <div className="absolute inset-0 z-30 bg-sky-950/80 backdrop-blur-sm border-2 border-dashed border-sky-400 rounded-2xl m-2 flex flex-col items-center justify-center pointer-events-none animate-in fade-in duration-150">
-          <div className="w-16 h-16 rounded-3xl bg-sky-500/20 border border-sky-400/40 text-sky-300 flex items-center justify-center mb-3 animate-bounce">
-            <Upload className="w-8 h-8" />
-          </div>
-          <h3 className="text-base font-bold text-white mb-1">Drop Files or Folders Here</h3>
-          <p className="text-xs text-sky-200">Release to upload files and nested directory trees directly</p>
-        </div>
-      )}
-
-      {/* Breadcrumb Navigation Bar for Real Folders */}
-      {!isTrashView && (
-        <div className="mx-2.5 sm:mx-4 mt-2 sm:mt-2.5 px-3 py-2 bg-neutral-900/90 border border-neutral-800 rounded-2xl flex items-center justify-between text-xs text-neutral-300 z-10 shrink-0 shadow-sm">
-          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            {currentFolderId && onNavigateBack && (
-              <button
-                onClick={onNavigateBack}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-white font-semibold min-h-[32px] transition-all active:scale-95 mr-1"
-                title="Go back to parent folder"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Back</span>
-              </button>
-            )}
-
+      {/* Folder Navigation & Breadcrumbs Bar */}
+      {!isTrashView && (folderBreadcrumbs.length > 0 || currentFolderId) && (
+        <div className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-neutral-900/60 border-b border-neutral-800/80 text-xs text-neutral-300 shrink-0 overflow-x-auto no-scrollbar">
+          {onNavigateBack && (
             <button
-              onClick={() => onNavigateFolder && onNavigateFolder(null)}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-neutral-800 transition-colors font-medium ${
-                !currentFolderId ? 'text-white font-bold' : 'text-neutral-400 hover:text-white'
-              }`}
+              onClick={onNavigateBack}
+              className="p-1 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors mr-1"
+              title="Back"
             >
-              <Files className="w-3.5 h-3.5" />
-              <span>Drive</span>
+              <ChevronLeft className="w-4 h-4" />
             </button>
+          )}
 
-            {folderBreadcrumbs.map((folder, idx) => {
-              const isLast = idx === folderBreadcrumbs.length - 1;
-              return (
-                <React.Fragment key={folder.id}>
-                  <ChevronRight className="w-3.5 h-3.5 text-neutral-600 shrink-0" />
-                  <button
-                    onClick={() => onNavigateFolder && onNavigateFolder(folder.id)}
-                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-neutral-800 transition-colors truncate max-w-[160px] ${
-                      isLast ? 'text-amber-400 font-bold bg-amber-500/10 border border-amber-500/30' : 'text-neutral-300 hover:text-white'
-                    }`}
-                  >
-                    <Folder className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20 shrink-0" />
-                    <span className="truncate">{folder.name}</span>
-                  </button>
-                </React.Fragment>
-              );
-            })}
-          </div>
+          <button
+            onClick={() => onNavigateFolder && onNavigateFolder(null)}
+            className={`px-2 py-1 rounded-lg hover:bg-neutral-800 transition-colors flex items-center gap-1 ${
+              !currentFolderId ? 'font-semibold text-white bg-neutral-800' : 'text-neutral-400'
+            }`}
+          >
+            <span>Drive</span>
+          </button>
+
+          {folderBreadcrumbs.map((folder, index) => {
+            const isLast = index === folderBreadcrumbs.length - 1;
+            return (
+              <React.Fragment key={folder.id}>
+                <ChevronRight className="w-3.5 h-3.5 text-neutral-600 shrink-0" />
+                <button
+                  onClick={() => onNavigateFolder && onNavigateFolder(folder.id)}
+                  className={`px-2 py-1 rounded-lg hover:bg-neutral-800 transition-colors truncate max-w-[150px] sm:max-w-[200px] flex items-center gap-1.5 ${
+                    isLast ? 'font-semibold text-white bg-neutral-800' : 'text-neutral-400'
+                  }`}
+                >
+                  <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">{folder.name}</span>
+                </button>
+              </React.Fragment>
+            );
+          })}
         </div>
       )}
-      {/* Item Counter & Select All Bar */}
-      <div className="mx-2.5 sm:mx-4 mt-2 sm:mt-2.5 flex items-center justify-between gap-2 z-10 shrink-0">
-        {files.length > 0 ? (
-          <button
-            id="select-all-btn"
-            onClick={() => onSelectAll(!isAllSelected)}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-900/80 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 transition-colors min-h-[34px] active:scale-[0.98]"
-            title={isAllSelected ? "Deselect all items (Ctrl+A)" : "Select all items in folder (Ctrl+A)"}
-          >
-            {isAllSelected ? <CheckSquare className="w-3.5 h-3.5 text-white" /> : <Square className="w-3.5 h-3.5 text-neutral-400" />}
-            <span>{isAllSelected ? 'Deselect All' : 'Select All'}</span>
-          </button>
-        ) : (
-          <div />
-        )}
 
-        <div className="text-[11px] sm:text-xs text-neutral-400 font-mono">
-          {fileCount > 0 && `${fileCount} file${fileCount === 1 ? '' : 's'}`}
-          {fileCount > 0 && folderCount > 0 && ', '}
-          {folderCount > 0 && `${folderCount} folder${folderCount === 1 ? '' : 's'}`}
-          {fileCount === 0 && folderCount === 0 && '0 items'}
+      {/* Drag & Drop Visual Overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-30 bg-sky-950/85 backdrop-blur-sm border-2 border-dashed border-sky-400 flex flex-col items-center justify-center pointer-events-none animate-in fade-in duration-150">
+          <Upload className="w-12 h-12 text-sky-400 animate-bounce mb-3" />
+          <h3 className="text-base sm:text-lg font-bold text-white mb-1">Drop Files or Entire Folders Here</h3>
+          <p className="text-xs text-sky-200">Automatically uploads to your active directory</p>
+        </div>
+      )}
+
+      {/* Sticky Action Sub-Bar */}
+      <div className="px-3 sm:px-4 py-2 border-b border-neutral-800/80 bg-neutral-950/90 backdrop-blur-sm flex items-center justify-between gap-2 shrink-0 select-none">
+        {/* Left: Count / Mode */}
+        <div className="flex items-center gap-2 text-xs text-neutral-400 min-w-0">
+          {isTrashView ? (
+            <span className="font-semibold text-rose-400 flex items-center gap-1.5">
+              <Trash2 className="w-3.5 h-3.5" />
+              Trash Bin ({files.length})
+            </span>
+          ) : (
+            <div className="flex items-center gap-2 font-mono text-[11px] truncate">
+              {folderCount > 0 && (
+                <span className="flex items-center gap-1 text-neutral-300">
+                  <Folder className="w-3.5 h-3.5 text-amber-400" />
+                  {folderCount} {folderCount === 1 ? 'folder' : 'folders'}
+                </span>
+              )}
+              {folderCount > 0 && fileCount > 0 && <span>&bull;</span>}
+              {fileCount > 0 && (
+                <span>{fileCount} {fileCount === 1 ? 'file' : 'files'}</span>
+              )}
+              {files.length === 0 && <span>Empty Directory</span>}
+            </div>
+          )}
+        </div>
+
+        {/* Right: Quick Batch Selection Toolbar if items selected */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {selectedIds.size > 0 ? (
+            <div className="flex items-center gap-1 sm:gap-2 animate-in fade-in duration-100">
+              <span className="text-xs font-mono text-sky-400 font-semibold px-2 py-0.5 rounded-md bg-sky-950 border border-sky-800">
+                {selectedIds.size} selected
+              </span>
+
+              <button
+                id="btn-select-all"
+                onClick={() => onSelectAll(!isAllSelected)}
+                className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                title={isAllSelected ? 'Deselect All' : 'Select All'}
+              >
+                {isAllSelected ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{isAllSelected ? 'Deselect All' : 'Select All'}</span>
+              </button>
+
+              {isTrashView ? (
+                <>
+                  <button
+                    onClick={() => onBatchRestore(selectedItems)}
+                    className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                    title="Restore Selected"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-white" />
+                    <span className="hidden md:inline">Restore</span>
+                  </button>
+                  <button
+                    onClick={() => onBatchDelete(selectedItems, true)}
+                    className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-200 text-xs flex items-center gap-1.5 transition-colors"
+                    title="Delete Permanently"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Delete Perm</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => onToggleFavorite(selectedItems)}
+                    className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                    title="Favorite Selected"
+                  >
+                    <Star className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="hidden md:inline">Favorite</span>
+                  </button>
+                  <button
+                    onClick={() => onBatchDownload(selectedItems)}
+                    className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                    title="Download Selected"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Download</span>
+                  </button>
+                  <button
+                    onClick={() => onBatchZip(selectedItems)}
+                    className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white text-xs flex items-center gap-1.5 transition-colors"
+                    title="Zip Selected"
+                  >
+                    <Archive className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="hidden md:inline">Zip</span>
+                  </button>
+                  <button
+                    onClick={() => onBatchDelete(selectedItems, false)}
+                    className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-neutral-900 hover:bg-rose-950/80 border border-neutral-800 hover:border-rose-800 text-neutral-400 hover:text-rose-200 text-xs flex items-center gap-1.5 transition-colors"
+                    title="Move to Trash"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Trash</span>
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button
+                onClick={onNewFile}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs transition-colors"
+                title="Create New File (Inline)"
+              >
+                <FilePlus className="w-3.5 h-3.5 text-sky-400" />
+                <span className="hidden sm:inline">New File</span>
+              </button>
+              {onNewFolder && (
+                <button
+                  onClick={onNewFolder}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs transition-colors"
+                  title="Create New Folder (Inline)"
+                >
+                  <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">New Folder</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* iPad-optimized Batch Toolbar when files are selected */}
-      {selectedIds.size > 0 && (
-        <div 
-          id="batch-selection-toolbar"
-          className="mx-2.5 sm:mx-4 mt-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-neutral-900 border border-neutral-700 rounded-2xl flex flex-wrap items-center justify-between gap-2 z-20 text-xs shadow-xl shrink-0 animate-in slide-in-from-top-2 duration-150"
-        >
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-white text-[11px] sm:text-xs">
-              {selectedIds.size} of {files.length} selected
-            </span>
-            <button
-              onClick={() => onSelectAll(false)}
-              className="text-neutral-400 hover:text-white underline ml-1 text-[11px]"
-            >
-              Clear
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {isTrashView ? (
-              <>
-                <button
-                  id="batch-restore-btn"
-                  onClick={() => onBatchRestore(selectedItems)}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-100 font-semibold min-h-[36px] sm:min-h-[40px] active:scale-[0.98] border border-neutral-700 text-xs"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span>Restore</span>
-                </button>
-                <button
-                  id="batch-delete-perm-btn"
-                  onClick={() => onBatchDelete(selectedItems, true)}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-white font-semibold min-h-[36px] sm:min-h-[40px] active:scale-[0.98] border border-neutral-700 text-xs"
-                >
-                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span>Delete Forever</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  id="batch-zip-btn"
-                  onClick={() => onBatchZip(selectedItems)}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-200 border border-neutral-700 min-h-[36px] sm:min-h-[40px] text-xs"
-                  title="Compress into ZIP"
-                >
-                  <Archive className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-300" />
-                  <span className="hidden sm:inline">Zip</span>
-                </button>
-
-                <button
-                  id="batch-download-btn"
-                  onClick={() => onBatchDownload(selectedItems)}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-200 border border-neutral-700 min-h-[36px] sm:min-h-[40px] text-xs"
-                  title="Download"
-                >
-                  <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-300" />
-                  <span className="hidden sm:inline">Download</span>
-                </button>
-
-                <button
-                  id="batch-star-btn"
-                  onClick={() => onToggleFavorite(selectedItems)}
-                  className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 min-w-[36px] min-h-[36px] sm:min-w-[40px] sm:min-h-[40px] flex items-center justify-center"
-                  title="Star / Unstar"
-                >
-                  <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-                </button>
-
-                {/* Instant Batch Delete / Trash button */}
-                <button
-                  id="batch-trash-btn"
-                  onClick={() => onBatchDelete(selectedItems, false)}
-                  className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-white font-semibold min-h-[36px] sm:min-h-[40px] active:scale-[0.98] border border-neutral-700 text-xs"
-                  title="Move to Trash"
-                >
-                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span>Delete</span>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Trash Header Notice */}
+      {/* Trash View Notification Banner */}
       {isTrashView && files.length > 0 && (
-        <div className="mx-2.5 sm:mx-4 mt-2 p-2.5 sm:p-3 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-between gap-2 text-xs text-neutral-300 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <AlertCircle className="w-4 h-4 text-neutral-400 shrink-0" />
-            <span className="truncate">Items in trash are stored until deleted permanently.</span>
+        <div className="mx-3 sm:mx-4 mt-2 px-3.5 py-2 rounded-2xl bg-rose-950/40 border border-rose-800/60 flex items-center justify-between text-xs text-rose-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>Items in trash are stored safely and can be restored anytime.</span>
           </div>
           <button
-            id="empty-trash-btn"
             onClick={onEmptyTrash}
-            className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 border border-neutral-700 text-white font-semibold min-h-[36px] sm:min-h-[38px] transition-colors shrink-0 text-[11px] sm:text-xs"
+            className="px-2.5 py-1 rounded-xl bg-rose-900 hover:bg-rose-800 text-white text-[11px] font-semibold transition-colors shrink-0"
           >
             Empty Trash
           </button>
@@ -387,7 +400,7 @@ export const FileList: React.FC<FileListProps> = ({
         id="file-list-scrollable"
         className="flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-4 pb-24 sm:pb-16"
       >
-        {files.length === 0 ? (
+        {files.length === 0 && !inlineCreatingType ? (
           // Empty State
           <div className="h-full min-h-[280px] sm:min-h-[360px] flex flex-col items-center justify-center text-center p-6 sm:p-8 border-2 border-dashed border-neutral-800 rounded-3xl">
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-neutral-900 border border-neutral-800 text-neutral-400 flex items-center justify-center mb-3 sm:mb-4 shadow-lg">
@@ -457,6 +470,16 @@ export const FileList: React.FC<FileListProps> = ({
                   </div>
                 </div>
 
+                {/* Inline Creation Card at Top of List */}
+                {inlineCreatingType && (
+                  <InlineNewItemCard
+                    type={inlineCreatingType}
+                    viewMode="list"
+                    onCommit={(name, type) => onInlineCreateCommit && onInlineCreateCommit(name, type)}
+                    onCancel={() => onInlineCreateCancel && onInlineCreateCancel()}
+                  />
+                )}
+
                 {files.map(item => (
                   <FileItemCard
                     key={item.id}
@@ -484,9 +507,19 @@ export const FileList: React.FC<FileListProps> = ({
               </div>
             )}
 
-            {/* GRID VIEW (Fluid 2-col up to 6-col responsive grid) */}
+            {/* GRID VIEW */}
             {viewMode === 'grid' && (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3">
+                {/* Inline Creation Card at Top of Grid */}
+                {inlineCreatingType && (
+                  <InlineNewItemCard
+                    type={inlineCreatingType}
+                    viewMode="grid"
+                    onCommit={(name, type) => onInlineCreateCommit && onInlineCreateCommit(name, type)}
+                    onCancel={() => onInlineCreateCancel && onInlineCreateCancel()}
+                  />
+                )}
+
                 {files.map(item => (
                   <FileItemCard
                     key={item.id}

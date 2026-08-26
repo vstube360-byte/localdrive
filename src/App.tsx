@@ -14,6 +14,7 @@ import {
   downloadVirtualFile,
   isFolder,
   ensureUniqueNamesPerFolder,
+  getStarterContentForFile,
 } from './utils/fileUtils';
 import { createZipArchive, extractZipArchive } from './utils/zipUtils';
 import { isAppOfflineLoaded, loadAppForOffline } from './serviceWorkerRegistration';
@@ -161,6 +162,7 @@ export default function App() {
   const [clipboard, setClipboard] = useState<ClipboardState | null>(null);
   const [isNewFileModalOpen, setIsNewFileModalOpen] = useState<boolean>(false);
   const [newItemModalMode, setNewItemModalMode] = useState<'file' | 'folder'>('file');
+  const [inlineCreatingType, setInlineCreatingType] = useState<'file' | 'folder' | null>(null);
   const [storageModalOpen, setStorageModalOpen] = useState<boolean>(false);
   const [progressModal, setProgressModal] = useState<{
     isOpen: boolean;
@@ -719,8 +721,23 @@ export default function App() {
     }
   };
 
-  // Direct open in external browser tab (Native Browser Rendering with asset resolution)
+  // Direct open in external browser tab (Native Virtual Server for static sites with full asset resolution)
   const handleOpenInTab = async (item: VFile) => {
+    if (isHtml(item) && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      try {
+        if (!navigator.serviceWorker.controller) {
+          await navigator.serviceWorker.register('/sw.js').catch(() => {});
+          await navigator.serviceWorker.ready.catch(() => {});
+        }
+        const rootFolderId = item.parentId || '__root__';
+        const vsiteUrl = `/__vsite__/${rootFolderId}/${encodeURIComponent(item.name)}`;
+        window.open(vsiteUrl, '_blank');
+        return;
+      } catch (err) {
+        console.warn('Virtual web server navigation fallback to Blob URL:', err);
+      }
+    }
+
     let blob = item.blob;
     if (!blob && item.textContent !== undefined) {
       blob = new Blob([item.textContent], { type: item.mimeType || getMimeType(item.name) });
@@ -819,13 +836,24 @@ export default function App() {
     });
   };
 
-  // Create File or Folder from Modal
-  const handleCreateFile = async (itemOrName: VFile | string, content?: string, mimeType?: string) => {
+  // Create File or Folder from Modal (Supports single or multi-item nested path creation)
+  const handleCreateFile = async (itemOrItems: VFile | VFile[] | string, content?: string, mimeType?: string) => {
+    if (Array.isArray(itemOrItems)) {
+      if (itemOrItems.length === 0) return;
+      await dbStorage.saveFiles(itemOrItems);
+      setAllFiles(prev => [...itemOrItems, ...prev]);
+      await updateStorageStats([...itemOrItems, ...allFiles]);
+      const mainItem = itemOrItems[itemOrItems.length - 1];
+      const isDir = mainItem.type === 'folder' || mainItem.mimeType === 'folder';
+      showToast(isDir ? `Created folder "${mainItem.name}"` : `Created file "${mainItem.name}"`);
+      return;
+    }
+
     let newFile: VFile;
     const now = Date.now();
 
-    if (typeof itemOrName === 'string') {
-      const uniqueName = generateUniqueName(itemOrName, allFiles, undefined, currentFolderId);
+    if (typeof itemOrItems === 'string') {
+      const uniqueName = generateUniqueName(itemOrItems, allFiles, undefined, currentFolderId);
       const mime = mimeType || 'text/plain';
       const text = content || '';
       const blob = new Blob([text], { type: mime });
@@ -843,14 +871,14 @@ export default function App() {
         trashed: false,
       };
     } else {
-      const targetParent = itemOrName.parentId !== undefined ? itemOrName.parentId : currentFolderId;
-      const uniqueName = generateUniqueName(itemOrName.name, allFiles, undefined, targetParent);
+      const targetParent = itemOrItems.parentId !== undefined ? itemOrItems.parentId : currentFolderId;
+      const uniqueName = generateUniqueName(itemOrItems.name, allFiles, undefined, targetParent);
       newFile = {
-        ...itemOrName,
+        ...itemOrItems,
         name: uniqueName,
         parentId: targetParent,
-        createdAt: itemOrName.createdAt || now,
-        updatedAt: itemOrName.updatedAt || now,
+        createdAt: itemOrItems.createdAt || now,
+        updatedAt: itemOrItems.updatedAt || now,
       };
     }
 
@@ -859,6 +887,124 @@ export default function App() {
     await updateStorageStats([newFile, ...allFiles]);
     const isDir = newFile.type === 'folder' || newFile.mimeType === 'folder';
     showToast(isDir ? `Created folder "${newFile.name}"` : `Created file "${newFile.name}"`);
+  };
+
+  // Inline Creation Commit Handler (instant inline creation without popup)
+  const handleInlineCreateCommit = async (rawName: string, type: 'file' | 'folder') => {
+    setInlineCreatingType(null);
+    const trimmed = rawName.trim();
+    if (!trimmed) return;
+
+    // Check for nested path like "src/components/App.tsx"
+    const normalized = trimmed.replace(/\\/g, '/');
+    const segments = normalized.split('/').filter(Boolean);
+
+    if (segments.length > 1) {
+      const fileName = segments.pop() || (type === 'folder' ? 'folder' : 'untitled.txt');
+      const folderSegments = segments;
+      let activeParentId = currentFolderId;
+      const createdItems: VFile[] = [];
+      const now = Date.now();
+
+      for (const seg of folderSegments) {
+        const existingFolder = allFiles.find(
+          f => isFolder(f) && !f.trashed && f.name.toLowerCase() === seg.toLowerCase() && (f.parentId || null) === activeParentId
+        );
+        if (existingFolder) {
+          activeParentId = existingFolder.id;
+        } else {
+          const newFolderId = 'folder_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
+          const folderVFile: VFile = {
+            id: newFolderId,
+            name: seg,
+            mimeType: 'folder',
+            type: 'folder',
+            size: 0,
+            createdAt: now,
+            updatedAt: now,
+            parentId: activeParentId,
+            trashed: false,
+          };
+          createdItems.push(folderVFile);
+          activeParentId = newFolderId;
+        }
+      }
+
+      if (type === 'folder') {
+        const uniqueName = generateUniqueName(fileName, allFiles, undefined, activeParentId);
+        const newFolder: VFile = {
+          id: 'folder_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now(),
+          name: uniqueName,
+          mimeType: 'folder',
+          type: 'folder',
+          size: 0,
+          createdAt: now,
+          updatedAt: now,
+          parentId: activeParentId,
+          trashed: false,
+        };
+        createdItems.push(newFolder);
+      } else {
+        const uniqueName = generateUniqueName(fileName, allFiles, undefined, activeParentId);
+        const mime = getMimeType(uniqueName);
+        const starterContent = getStarterContentForFile(uniqueName);
+        const blob = new Blob([starterContent], { type: mime || 'text/plain;charset=utf-8' });
+        const newFile: VFile = {
+          id: 'file_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now(),
+          name: uniqueName,
+          mimeType: mime || 'text/plain',
+          type: 'file',
+          size: blob.size,
+          blob,
+          textContent: starterContent,
+          createdAt: now,
+          updatedAt: now,
+          parentId: activeParentId,
+          trashed: false,
+        };
+        createdItems.push(newFile);
+      }
+
+      await handleCreateFile(createdItems);
+      return;
+    }
+
+    // Direct single item creation
+    const now = Date.now();
+    if (type === 'folder') {
+      const uniqueName = generateUniqueName(trimmed, allFiles, undefined, currentFolderId);
+      const newFolder: VFile = {
+        id: 'folder_' + Math.random().toString(36).substring(2, 10) + '_' + now,
+        name: uniqueName,
+        mimeType: 'folder',
+        type: 'folder',
+        size: 0,
+        createdAt: now,
+        updatedAt: now,
+        parentId: currentFolderId,
+        trashed: false,
+      };
+      await handleCreateFile(newFolder);
+    } else {
+      const uniqueName = generateUniqueName(trimmed, allFiles, undefined, currentFolderId);
+      const mime = getMimeType(uniqueName);
+      const starterContent = getStarterContentForFile(uniqueName);
+      const blob = new Blob([starterContent], { type: mime || 'text/plain;charset=utf-8' });
+      const newFile: VFile = {
+        id: 'file_' + Math.random().toString(36).substring(2, 10) + '_' + now,
+        name: uniqueName,
+        mimeType: mime || 'text/plain',
+        type: 'file',
+        size: blob.size,
+        blob,
+        textContent: starterContent,
+        createdAt: now,
+        updatedAt: now,
+        parentId: currentFolderId,
+        trashed: false,
+      };
+      await handleCreateFile(newFile);
+    }
   };
 
   // Upload Files from iPad / Computer / Gallery
@@ -1433,7 +1579,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-neutral-950">
-        {/* iPad Navbar with Sidebar toggle */}
+        {/* iPad Navbar with Sidebar toggle and Selected File Options Bar */}
         <Navbar
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
@@ -1443,14 +1589,26 @@ export default function App() {
           onViewModeChange={setViewMode}
           sortOption={sortOption}
           onSortChange={setSortOption}
-          onNewFile={() => { setNewItemModalMode('file'); setIsNewFileModalOpen(true); }}
-          onNewFolder={() => { setNewItemModalMode('folder'); setIsNewFileModalOpen(true); }}
+          onNewFile={() => setInlineCreatingType('file')}
+          onNewFolder={() => setInlineCreatingType('folder')}
           onUploadFiles={handleUploadFiles}
           onUploadFilesWithPaths={handleUploadFilesWithPaths}
           onUploadZip={handleUploadZip}
           isOfflineLoaded={isOfflineLoaded}
           isOfflineLoading={isOfflineLoading}
           onLoadOffline={handleLoadOffline}
+          selectedItems={allFiles.filter(f => selectedIds.has(f.id))}
+          onClearSelection={() => setSelectedIds(new Set())}
+          onOpenInTab={handleOpenInTab}
+          onPreview={(item) => setPreviewFile(item)}
+          onEdit={(item) => setEditorFile(item)}
+          onRename={(item) => setRenamingItemId(item.id)}
+          onToggleFavorite={handleToggleFavorite}
+          onDownload={handleBatchDownload}
+          onZip={handleBatchZip}
+          onUnzip={handleUnzipFile}
+          onGetInfo={(item) => setPropertiesFile(item)}
+          onDelete={(items) => handleDelete(items, isTrashView)}
         />
 
         {/* Floating Toast Notification */}
@@ -1506,6 +1664,9 @@ export default function App() {
             isSelectMode={isSelectMode}
             onToggleSelectMode={() => setIsSelectMode(prev => !prev)}
             renamingItemId={renamingItemId}
+            inlineCreatingType={inlineCreatingType}
+            onInlineCreateCommit={handleInlineCreateCommit}
+            onInlineCreateCancel={() => setInlineCreatingType(null)}
             isTrashView={isTrashView}
             currentFolderId={currentFolderId}
             folderBreadcrumbs={folderBreadcrumbs}
@@ -1529,8 +1690,8 @@ export default function App() {
             onBatchZip={handleBatchZip}
             onBatchDelete={handleDelete}
             onBatchRestore={handleRestore}
-            onNewFile={() => { setNewItemModalMode('file'); setIsNewFileModalOpen(true); }}
-            onNewFolder={() => { setNewItemModalMode('folder'); setIsNewFileModalOpen(true); }}
+            onNewFile={() => setInlineCreatingType('file')}
+            onNewFolder={() => setInlineCreatingType('folder')}
             onTriggerUpload={() => {
               const input = document.querySelector('input[type="file"]') as HTMLInputElement;
               input?.click();
@@ -1582,6 +1743,7 @@ export default function App() {
         isOpen={isNewFileModalOpen}
         initialMode={newItemModalMode}
         currentFolderId={currentFolderId}
+        allFiles={allFiles}
         onClose={() => setIsNewFileModalOpen(false)}
         onCreateFile={handleCreateFile}
       />
@@ -1630,8 +1792,8 @@ export default function App() {
         onRename={(item) => setRenamingItemId(item.id)}
         onDelete={handleDelete}
         onRestore={handleRestore}
-        onNewFile={() => { setNewItemModalMode('file'); setIsNewFileModalOpen(true); }}
-        onNewFolder={() => { setNewItemModalMode('folder'); setIsNewFileModalOpen(true); }}
+        onNewFile={() => setInlineCreatingType('file')}
+        onNewFolder={() => setInlineCreatingType('folder')}
       />
     </div>
   );

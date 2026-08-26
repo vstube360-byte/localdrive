@@ -71,10 +71,14 @@ export async function loadAppForOffline(): Promise<{ success: boolean; message: 
 
 export function registerServiceWorker(): void {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
+    const doRegister = () => {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
+          if (registration.installing || registration.waiting) {
+            registration.installing?.postMessage({ type: 'SKIP_WAITING' });
+            registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+          }
           registration.onupdatefound = () => {
             const installingWorker = registration.installing;
             if (installingWorker == null) return;
@@ -93,7 +97,13 @@ export function registerServiceWorker(): void {
         .catch((error) => {
           console.warn('Service worker registration failed:', error);
         });
-    });
+    };
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      doRegister();
+    } else {
+      window.addEventListener('load', doRegister);
+    }
   }
 }
 

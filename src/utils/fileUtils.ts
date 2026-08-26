@@ -393,3 +393,77 @@ export function downloadVirtualFile(file: VFile): void {
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export function getStarterContentForFile(fileName: string): string {
+  const ext = getFileExtension(fileName).toLowerCase();
+  switch (ext) {
+    case 'html':
+    case 'htm':
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Webpage</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Hello from LocalBox</h1>
+  <p>Your static page is running locally.</p>
+  <script src="app.js"></script>
+</body>
+</html>
+`;
+    case 'css':
+      return `/* Stylesheet */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #0f172a;
+  color: #f8fafc;
+  padding: 2rem;
+}
+`;
+    case 'js':
+    case 'mjs':
+      return `// JavaScript Module
+console.log("App script running!");
+`;
+    case 'ts':
+      return `// TypeScript Module
+export function greet(name: string): string {
+  return \`Hello, \${name}!\`;
+}
+`;
+    case 'tsx':
+    case 'jsx':
+      return `import React from 'react';
+
+export default function Component() {
+  return (
+    <div>
+      <h2>Hello Component</h2>
+    </div>
+  );
+}
+`;
+    case 'json':
+      return `{\n  "name": "new-file",\n  "version": "1.0.0",\n  "data": []\n}\n`;
+    case 'md':
+      return `# Document Title\n\nWrite your thoughts here.\n`;
+    case 'py':
+      return `#!/usr/bin/env python3\n\ndef main():\n    print("Hello from LocalBox!")\n\nif __name__ == "__main__":\n    main()\n`;
+    case 'sql':
+      return `-- SQL Query\nSELECT * FROM items;\n`;
+    case 'csv':
+      return `id,name,status\n1,Sample Item,Active\n`;
+    default:
+      return ``;
+  }
+}
+

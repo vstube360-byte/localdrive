@@ -55,16 +55,62 @@ export async function createZipArchive(
 }
 
 /**
- * Extracts a ZIP file (from Blob) and creates flat VFiles for IndexedDB.
+ * Extracts a ZIP file (from Blob) preserving full folder hierarchy.
  */
 export async function extractZipArchive(
   zipBlob: Blob,
-  onProgress?: ZipProgressCallback
+  onProgress?: ZipProgressCallback | string | null,
+  targetFolderId?: string | ZipProgressCallback | null
 ): Promise<VFile[]> {
+  let progressCb: ZipProgressCallback | undefined;
+  let rootParentId: string | null = null;
+
+  if (typeof onProgress === 'function') {
+    progressCb = onProgress;
+    rootParentId = typeof targetFolderId === 'string' ? targetFolderId : null;
+  } else if (typeof onProgress === 'string') {
+    rootParentId = onProgress;
+    if (typeof targetFolderId === 'function') {
+      progressCb = targetFolderId;
+    }
+  }
+
   const zip = new JSZip();
   const loadedZip = await zip.loadAsync(zipBlob);
   const newVFiles: VFile[] = [];
   const now = Date.now();
+  const folderMap = new Map<string, string>();
+
+  // Helper to resolve or create folder objects for nested zip entries
+  const getOrCreateFolderId = (folderSegments: string[]): string | null => {
+    let currParentId = rootParentId;
+    let pathKey = currParentId || '';
+
+    for (const segment of folderSegments) {
+      pathKey += `/${segment.toLowerCase()}`;
+      if (folderMap.has(pathKey)) {
+        currParentId = folderMap.get(pathKey)!;
+        continue;
+      }
+
+      const newFolderId = 'folder_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
+      const folderVFile: VFile = {
+        id: newFolderId,
+        name: segment,
+        mimeType: 'folder',
+        type: 'folder',
+        size: 0,
+        createdAt: now,
+        updatedAt: now,
+        parentId: currParentId,
+        trashed: false,
+      };
+      newVFiles.push(folderVFile);
+      folderMap.set(pathKey, newFolderId);
+      currParentId = newFolderId;
+    }
+    return currParentId;
+  };
 
   const entries: { path: string; entry: JSZip.JSZipObject }[] = [];
   loadedZip.forEach((relativePath, entry) => {
@@ -79,12 +125,15 @@ export async function extractZipArchive(
   for (let i = 0; i < entries.length; i++) {
     const { path: relativePath, entry } = entries[i];
     processedCount++;
-    if (onProgress) {
-      onProgress(Math.round((processedCount / Math.max(totalEntries, 1)) * 100), entry.name);
+    if (progressCb) {
+      progressCb(Math.round((processedCount / Math.max(totalEntries, 1)) * 100), entry.name);
     }
 
-    // Use clean filename (strip path if nested)
-    const fileName = relativePath.split('/').filter(Boolean).pop() || `file_${i}`;
+    const pathParts = relativePath.split('/').filter(Boolean);
+    const fileName = pathParts.pop() || `file_${i}`;
+    const folderSegments = pathParts;
+    const parentFolderId = folderSegments.length > 0 ? getOrCreateFolderId(folderSegments) : rootParentId;
+
     const mime = getMimeType(fileName);
     const fileBlob = await entry.async('blob');
 
@@ -116,6 +165,7 @@ export async function extractZipArchive(
       textContent,
       createdAt: now,
       updatedAt: now,
+      parentId: parentFolderId,
       trashed: false,
     };
 

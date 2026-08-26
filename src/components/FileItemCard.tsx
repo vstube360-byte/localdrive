@@ -126,7 +126,11 @@ export const FileItemCard: React.FC<FileItemCardProps> = ({
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
 
     longPressTimerRef.current = setTimeout(() => {
-      // Trigger context menu at touch location
+      // Haptic touch feedback if device supports it
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try { navigator.vibrate(15); } catch (_) {}
+      }
+      // Trigger context menu at touch position
       const syntheticEvent = {
         preventDefault: () => {},
         stopPropagation: () => {},
@@ -134,7 +138,7 @@ export const FileItemCard: React.FC<FileItemCardProps> = ({
         clientY: touch.clientY,
       } as unknown as React.MouseEvent;
       onContextMenu(item, syntheticEvent);
-    }, 480);
+    }, 400);
   };
 
   const handleTouchEnd = () => {
@@ -160,9 +164,11 @@ export const FileItemCard: React.FC<FileItemCardProps> = ({
   };
 
   const handleCardClick = (e: React.MouseEvent | React.TouchEvent) => {
-    // Only clicking on the checkbox box selects/toggles the file/folder.
-    // Card body click does not toggle selection.
     e.stopPropagation();
+    if (isRenaming) return;
+
+    // Clicking the card directly opens/previews the file or enters folder without modifying selection!
+    onDoubleClick(item);
   };
 
   const handleCardDoubleClick = (e?: React.MouseEvent) => {

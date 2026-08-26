@@ -17,7 +17,7 @@ import {
   Info
 } from 'lucide-react';
 import { VFile } from '../types';
-import { isImageOrVideo, isZip, isTextOrCode } from '../utils/fileUtils';
+import { isImageOrVideo, isZip, isTextOrCode, isHtml } from '../utils/fileUtils';
 
 interface ContextMenuProps {
   x: number;
@@ -217,7 +217,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               </button>
             )}
 
-            {singleItem && isImageOrVideo(singleItem) && (
+            {singleItem && (isImageOrVideo(singleItem) || isHtml(singleItem)) && (
               <button
                 id="context-btn-preview"
                 onClick={() => { onClose(); onPreview(singleItem); }}
@@ -225,7 +225,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               >
                 <div className="flex items-center gap-2.5">
                   <Eye className="w-4 h-4 text-neutral-300" />
-                  <span>Preview {singleItem.mimeType?.startsWith('image') ? 'Image' : 'Video'}</span>
+                  <span>Preview {isHtml(singleItem) ? 'Live Website' : (singleItem.mimeType?.startsWith('image') ? 'Image' : 'Video')}</span>
                 </div>
               </button>
             )}
